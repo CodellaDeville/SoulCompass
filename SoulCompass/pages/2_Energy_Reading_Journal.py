@@ -114,6 +114,14 @@ load_css()
 if 'journal_entries' not in st.session_state:
     st.session_state.journal_entries = []
 
+# Initialize form clearing flags
+if 'clear_emotion_form' not in st.session_state:
+    st.session_state.clear_emotion_form = False
+if 'clear_dream_form' not in st.session_state:
+    st.session_state.clear_dream_form = False
+if 'clear_sync_form' not in st.session_state:
+    st.session_state.clear_sync_form = False
+
 # Initialize the Law of One database
 @st.cache_resource
 def load_law_of_one_db():
@@ -211,10 +219,16 @@ st.markdown("<h2>New Journal Entry</h2>", unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["Emotions", "Dreams", "Synchronicities"])
 
 with tab1:
-    st.markdown("<h3>Log Your Emotional Experience</h3>", unsafe_allow_html=True)
+    st.markdown("<h3>Log Your Emotion</h3>", unsafe_allow_html=True)
+    
+    # Get default values or empty strings if clearing is needed
+    emotion_description_default = "" if st.session_state.get('clear_emotion_form', False) else st.session_state.get('emotion_description', "")
+    st.session_state.clear_emotion_form = False
+    
     emotion_date = st.date_input("Date", datetime.date.today(), key="emotion_date")
+    emotion_type = st.selectbox("Emotion Type", ["Joy", "Love", "Peace", "Sadness", "Fear", "Anger", "Shame", "Guilt", "Other"], key="emotion_type")
     emotion_intensity = st.slider("Intensity (1-10)", 1, 10, 5, key="emotion_intensity")
-    emotion_description = st.text_area("Describe your emotional experience", height=150, key="emotion_description")
+    emotion_description = st.text_area("Describe your experience", height=150, key="emotion_description", value=emotion_description_default)
     emotion_submit = st.button("Save & Generate Insight", key="emotion_submit")
     
     if emotion_submit and emotion_description:
@@ -225,6 +239,7 @@ with tab1:
         entry = {
             "type": "Emotion",
             "date": emotion_date,
+            "type": emotion_type,
             "intensity": emotion_intensity,
             "description": emotion_description,
             "insight": insight
@@ -237,14 +252,20 @@ with tab1:
         st.success("Entry saved successfully!")
         st.markdown(f'<div class="insight-box"><p><strong>Insight:</strong> {insight}</p></div>', unsafe_allow_html=True)
         
-        # Clear the form
-        st.session_state.emotion_description = ""
+        # Set flag to clear the form on next rerun
+        st.session_state.clear_emotion_form = True
+        st.experimental_rerun()
 
 with tab2:
     st.markdown("<h3>Log Your Dream</h3>", unsafe_allow_html=True)
+    
+    # Get default values or empty strings if clearing is needed
+    dream_description_default = "" if st.session_state.get('clear_dream_form', False) else st.session_state.get('dream_description', "")
+    st.session_state.clear_dream_form = False
+    
     dream_date = st.date_input("Date", datetime.date.today(), key="dream_date")
     dream_clarity = st.slider("Clarity (1-10)", 1, 10, 5, key="dream_clarity")
-    dream_description = st.text_area("Describe your dream", height=150, key="dream_description")
+    dream_description = st.text_area("Describe your dream", height=150, key="dream_description", value=dream_description_default)
     dream_submit = st.button("Save & Generate Insight", key="dream_submit")
     
     if dream_submit and dream_description:
@@ -267,14 +288,20 @@ with tab2:
         st.success("Entry saved successfully!")
         st.markdown(f'<div class="insight-box"><p><strong>Insight:</strong> {insight}</p></div>', unsafe_allow_html=True)
         
-        # Clear the form
-        st.session_state.dream_description = ""
+        # Set flag to clear the form on next rerun
+        st.session_state.clear_dream_form = True
+        st.experimental_rerun()
 
 with tab3:
     st.markdown("<h3>Log Your Synchronicity</h3>", unsafe_allow_html=True)
+    
+    # Get default values or empty strings if clearing is needed
+    sync_description_default = "" if st.session_state.get('clear_sync_form', False) else st.session_state.get('sync_description', "")
+    st.session_state.clear_sync_form = False
+    
     sync_date = st.date_input("Date", datetime.date.today(), key="sync_date")
     sync_significance = st.slider("Significance (1-10)", 1, 10, 5, key="sync_significance")
-    sync_description = st.text_area("Describe the synchronicity", height=150, key="sync_description")
+    sync_description = st.text_area("Describe your synchronicity", height=150, key="sync_description", value=sync_description_default)
     sync_submit = st.button("Save & Generate Insight", key="sync_submit")
     
     if sync_submit and sync_description:
@@ -297,8 +324,9 @@ with tab3:
         st.success("Entry saved successfully!")
         st.markdown(f'<div class="insight-box"><p><strong>Insight:</strong> {insight}</p></div>', unsafe_allow_html=True)
         
-        # Clear the form
-        st.session_state.sync_description = ""
+        # Set flag to clear the form on next rerun
+        st.session_state.clear_sync_form = True
+        st.experimental_rerun()
 
 # Journal history
 st.markdown("<h2>Journal History</h2>", unsafe_allow_html=True)
@@ -321,6 +349,7 @@ else:
             # Display entry details based on type
             if entry_type == "Emotion":
                 st.markdown(f"**Intensity:** {entry['intensity']}/10", unsafe_allow_html=True)
+                st.markdown(f"**Type:** {entry['type']}", unsafe_allow_html=True)
             elif entry_type == "Dream":
                 st.markdown(f"**Clarity:** {entry['clarity']}/10", unsafe_allow_html=True)
             elif entry_type == "Synchronicity":

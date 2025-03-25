@@ -129,6 +129,10 @@ load_css()
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 
+# Initialize clear_input flag if needed
+if "clear_input" not in st.session_state:
+    st.session_state.clear_input = False
+
 # Initialize the Law of One database
 @st.cache_resource
 def load_law_of_one_db():
@@ -207,8 +211,22 @@ for message in st.session_state.chat_history:
         st.markdown(f'<div class="ra-message">{message["content"]}</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
+# If the clear_input flag is set, clear it and return an empty string as the default value
+user_input_default = ""
+if st.session_state.get("clear_input", False):
+    st.session_state.clear_input = False
+else:
+    user_input_default = st.session_state.get("user_input", "")
+
 # User input
-user_input = st.text_input("Type your question here:", key="user_input")
+user_input = st.text_input(
+    "Ask Ra a question",
+    key="user_input",
+    value=user_input_default,
+    placeholder="e.g., What is the Law of One?",
+    label_visibility="collapsed"
+)
+
 col1, col2, col3 = st.columns([3, 1, 1])
 with col1:
     pass
@@ -226,8 +244,8 @@ with col2:
             # Add Ra's response to chat history
             st.session_state.chat_history.append({"role": "ra", "content": ra_response})
             
-            # Clear the input box
-            st.session_state.user_input = ""
+            # Use a flag to clear input on next rerun instead of directly modifying session state
+            st.session_state.clear_input = True
             
             # Rerun to update the chat display
             st.experimental_rerun()
