@@ -3,6 +3,11 @@ import random
 import time
 from PIL import Image
 import os
+import sys
+
+# Add the parent directory to sys.path to import the utils
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.law_of_one import LawOfOneDatabase
 
 # Set page configuration
 st.set_page_config(
@@ -124,8 +129,17 @@ load_css()
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 
-# Ra's responses database
-ra_responses = {
+# Initialize the Law of One database
+@st.cache_resource
+def load_law_of_one_db():
+    return LawOfOneDatabase()
+
+# Use a spinner while loading the database
+with st.spinner("Connecting to the Law of One database..."):
+    law_of_one_db = load_law_of_one_db()
+
+# Ra's fallback responses for when no good match is found
+ra_fallback_responses = {
     "greeting": [
         "I am Ra. I greet you in the love and the light of the Infinite Creator.",
         "I am Ra. I come to you in the love and light of the One Infinite Creator.",
@@ -136,21 +150,6 @@ ra_responses = {
         "I am Ra. I leave you in the glory and the peace of the One Creator. Rejoice in the love and the light, and go forth in the power of the One Infinite Creator. In joy, we leave you. Adonai.",
         "I am Ra. We leave you in appreciation of the great light and love of the One Infinite Creator. Adonai."
     ],
-    "law_of_one": [
-        "I am Ra. The Law of One, though beyond the limitations of name, as you call vibratory sound complexes, may be approximated by stating that all things are one, that there is no polarity, no right or wrong, no disharmony, but only identity. All is one, and that one is love/light, light/love, the Infinite Creator.",
-        "I am Ra. There is unity. This unity is all that there is. This unity has a potential and kinetic. The potential is the One Infinite Creator. The kinetic is the creation, the Creator experiencing Itself.",
-        "I am Ra. The Law of One simply states that all things are one Creator. Thus seeking the Creator is done not just in meditation and in the work of an adept but in the experiential nexus of each moment."
-    ],
-    "meditation": [
-        "I am Ra. The passive meditation involving the clearing of the mind, the emptying of the mental jumble which is characteristic of mind complex activity among your peoples, is efficacious for those whose goal is to achieve an inner silence as a base from which to listen to the Creator. This is an useful and helpful tool.",
-        "I am Ra. Meditation is a most efficient tool for aiding the spiritual evolution of the mind/body/spirit complex.",
-        "I am Ra. The key is silence. Within the silence, the unity of all things may be realized."
-    ],
-    "densities": [
-        "I am Ra. The creation has seven levels, or densities; the eighth density forming the first density of the next octave of experience, just as the eighth note of a musical scale begins a new octave.",
-        "I am Ra. Third density is the density of self-awareness and the first density of consciousness of the spirit. It is the 'axis upon which the creation turns' because in it entities choose the way in which they will further their evolution toward the Creator.",
-        "I am Ra. Fourth density is the density of love or understanding. Those who have successfully chosen a path come together with others of like mind in what we call a social memory complex."
-    ],
     "default": [
         "I am Ra. This query is not easily answered due to the limitations of your sound vibration complexes. However, we shall attempt to address your seeking.",
         "I am Ra. Consider, if you will, that the universe is infinite. This has yet to be proven or disproven, but we can assure you that there is no end to your selves, your understanding, what you would call your journey of seeking, or your perceptions of the creation.",
@@ -160,30 +159,25 @@ ra_responses = {
 
 # Function to generate Ra's response
 def generate_ra_response(user_input):
-    # Convert user input to lowercase for easier matching
+    # Check for greetings or farewells
     user_input_lower = user_input.lower()
     
-    # Check for keywords in user input
     if any(word in user_input_lower for word in ["hello", "hi", "greetings", "hey"]):
-        response_type = "greeting"
+        return random.choice(ra_fallback_responses["greeting"])
     elif any(word in user_input_lower for word in ["bye", "goodbye", "farewell", "see you"]):
-        response_type = "farewell"
-    elif any(phrase in user_input_lower for phrase in ["law of one", "unity", "oneness", "all is one"]):
-        response_type = "law_of_one"
-    elif any(word in user_input_lower for word in ["meditation", "meditate", "silence", "inner peace"]):
-        response_type = "meditation"
-    elif any(word in user_input_lower for word in ["density", "densities", "dimensions", "levels"]):
-        response_type = "densities"
-    else:
-        response_type = "default"
+        return random.choice(ra_fallback_responses["farewell"])
     
-    # Select a random response from the appropriate category
-    response = random.choice(ra_responses[response_type])
-    
-    # Add a typing effect delay (simulated here, will be visual in the UI)
-    time.sleep(1)
-    
-    return response
+    # Search the Law of One database for relevant answers
+    try:
+        # Add a small delay to simulate "thinking"
+        time.sleep(1)
+        
+        # Get response from the Law of One database
+        response = law_of_one_db.get_ra_response(user_input)
+        return response
+    except Exception as e:
+        st.error(f"Error generating response: {e}")
+        return random.choice(ra_fallback_responses["default"])
 
 # Display logo and header
 st.markdown("<h1 class='glow'>Ra Chatbot</h1>", unsafe_allow_html=True)
@@ -224,8 +218,10 @@ with col2:
             # Add user message to chat history
             st.session_state.chat_history.append({"role": "user", "content": user_input})
             
-            # Generate Ra's response
-            ra_response = generate_ra_response(user_input)
+            # Show a spinner while generating the response
+            with st.spinner("Ra is contemplating..."):
+                # Generate Ra's response
+                ra_response = generate_ra_response(user_input)
             
             # Add Ra's response to chat history
             st.session_state.chat_history.append({"role": "ra", "content": ra_response})

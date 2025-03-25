@@ -3,7 +3,12 @@ import pandas as pd
 import datetime
 import random
 import os
+import sys
 from PIL import Image
+
+# Add the parent directory to sys.path to import the utils
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.law_of_one import LawOfOneDatabase
 
 # Set page configuration
 st.set_page_config(
@@ -109,46 +114,79 @@ load_css()
 if 'journal_entries' not in st.session_state:
     st.session_state.journal_entries = []
 
-# Law of One insights database
-law_of_one_insights = {
+# Initialize the Law of One database
+@st.cache_resource
+def load_law_of_one_db():
+    return LawOfOneDatabase()
+
+# Use a spinner while loading the database
+with st.spinner("Connecting to the Law of One database..."):
+    law_of_one_db = load_law_of_one_db()
+
+# Fallback insights if database search fails
+fallback_insights = {
     "emotions": [
         "I am Ra. The emotions you are experiencing are catalysts for spiritual growth. Remember that all is one, and these feelings are part of the Creator experiencing itself.",
         "I am Ra. Your emotional state is a distortion of the One Infinite Creator. By accepting and balancing these emotions, you move closer to understanding the Law of One.",
-        "I am Ra. The emotions you describe are vibrations that can be balanced through meditation and contemplation. As you balance these energies, you open pathways to intelligent infinity.",
-        "I am Ra. Consider that these emotions are teachers, offering lessons that your higher self has chosen for your growth. There is great wisdom in fully experiencing and then releasing these catalysts."
+        "I am Ra. The emotions you describe are vibrations that can be balanced through meditation and contemplation. As you balance these energies, you open pathways to intelligent infinity."
     ],
     "dreams": [
         "I am Ra. The dream state offers access to the deeper portions of the mind complex, where symbols and archetypes reside. Your dream contains symbols that reflect your current spiritual journey.",
         "I am Ra. Dreams often serve as a bridge between your conscious mind and the cosmic mind. The imagery you describe suggests communication from your higher self regarding your spiritual path.",
-        "I am Ra. In the dream state, the veil between densities thins, allowing glimpses of other realities and potentials. Your dream experience offers insight into patterns of energy that influence your current incarnation.",
-        "I am Ra. The dream you describe contains elements of both personal and universal symbolism. We suggest meditation upon these symbols to uncover their meaning for your unique path."
+        "I am Ra. In the dream state, the veil between densities thins, allowing glimpses of other realities and potentials."
     ],
     "synchronicities": [
         "I am Ra. What you call synchronicity is often the higher self communicating through the illusion of space/time. These patterns indicate alignment with your spiritual purpose.",
         "I am Ra. Synchronicities are moments when the veil thins, allowing you to perceive the interconnectedness of all things. They often appear when you are moving in harmony with your pre-incarnative choices.",
-        "I am Ra. The meaningful coincidences you describe are manifestations of the Law of One in action. They reveal the underlying unity of all experience and offer guidance from your higher self.",
-        "I am Ra. These synchronistic events suggest that you are becoming more conscious of the patterns and energies that have always surrounded you. As your awareness expands, you perceive more of these connections."
+        "I am Ra. The meaningful coincidences you describe are manifestations of the Law of One in action."
     ]
 }
 
 # Function to generate insights based on journal entry
 def generate_insight(entry_type, entry_text):
-    # Select a random insight from the appropriate category
-    base_insight = random.choice(law_of_one_insights[entry_type])
-    
-    # Add personalized elements based on the entry text
-    if "challenge" in entry_text.lower() or "difficult" in entry_text.lower():
-        personalized = " The challenges you face are opportunities for polarization and growth toward the Creator."
-    elif "joy" in entry_text.lower() or "happy" in entry_text.lower():
-        personalized = " Your experience of joy is a glimpse of the true nature of the Creator, which is infinite love and light."
-    elif "confused" in entry_text.lower() or "uncertain" in entry_text.lower():
-        personalized = " Confusion is often a precursor to understanding. Sit with this catalyst and allow it to transform within you."
-    elif "meditation" in entry_text.lower():
-        personalized = " Your meditation practice strengthens your connection to intelligent infinity and accelerates your spiritual evolution."
-    else:
-        personalized = " Remember that you are on a unique path of seeking, and each experience brings you closer to understanding the Law of One."
-    
-    return base_insight + personalized
+    try:
+        # First, try to get a relevant response from the Law of One database
+        if entry_type == "emotions":
+            search_query = f"emotions {entry_text}"
+        elif entry_type == "dreams":
+            search_query = f"dreams {entry_text}"
+        elif entry_type == "synchronicities":
+            search_query = f"synchronicity {entry_text}"
+        
+        # Search the database
+        results = law_of_one_db.search(search_query)
+        
+        if results:
+            # Use the most relevant answer
+            best_match = results[0]
+            insight = best_match['answer']
+            
+            # Add a source reference
+            source_ref = f"\n\n[From Session {best_match['session_id']}]"
+            
+            # Ensure it starts with Ra's greeting if it doesn't already
+            if not insight.startswith("I am Ra"):
+                insight = "I am Ra. " + insight
+                
+            # Add personalized elements based on the entry text
+            if "challenge" in entry_text.lower() or "difficult" in entry_text.lower():
+                personalized = " The challenges you face are opportunities for polarization and growth toward the Creator."
+            elif "joy" in entry_text.lower() or "happy" in entry_text.lower():
+                personalized = " Your experience of joy is a glimpse of the true nature of the Creator, which is infinite love and light."
+            elif "confused" in entry_text.lower() or "uncertain" in entry_text.lower():
+                personalized = " Confusion is often a precursor to understanding. Sit with this catalyst and allow it to transform within you."
+            elif "meditation" in entry_text.lower():
+                personalized = " Your meditation practice strengthens your connection to intelligent infinity and accelerates your spiritual evolution."
+            else:
+                personalized = " Remember that you are on a unique path of seeking, and each experience brings you closer to understanding the Law of One."
+            
+            return insight + personalized + source_ref
+        else:
+            # Use fallback if no relevant results found
+            return random.choice(fallback_insights[entry_type])
+    except Exception as e:
+        st.error(f"Error generating insight: {e}")
+        return random.choice(fallback_insights[entry_type])
 
 # Display logo and header
 st.markdown("<h1 class='glow'>Energy Reading Journal</h1>", unsafe_allow_html=True)
